@@ -39,7 +39,7 @@ except ImportError:
 def joint_entropy(data_array, pos=None, **kwds):
     """Joint entropy between multiple points
 
-    The data_array contains the multi-dimensional input data set. By default, the first axies
+    The data_array contains the multi-dimensional input data set. By default, the first axis
     should contain the realisations, and subsequent axes the dimensions within each realisation.
 
     Args:
@@ -250,7 +250,7 @@ class EntropySection(object):
         """Pure convencience fucntion for parallel execution!"""
         return joint_entropy(self.data[:, i, j])
 
-    def plot_entropy(self, **kwds):
+    def plot_entropy(self, xlabel="x", ylabel="y", **kwds):
         """Create a plot of entropy
 
         If entropy has not been calculated (i.e. self.h does not exist), then this is automatically
@@ -261,7 +261,9 @@ class EntropySection(object):
             n_jobs = int: number of processors to use for parallel execution (default: 1)
             pts = 2-D array: point positions to include in plot
             data_points = 2-D array: position of data points (e.g. used to generate realizations)
-
+            title = string: title for plot
+            xlabel = string
+            ylabel = string
         Returns:
 
         """
@@ -280,13 +282,20 @@ class EntropySection(object):
             im = ax.imshow(self.h.transpose(), origin='lower left', cmap=cmap, vmax=vmax)
             if 'pts' in kwds:
                 # plot points as overlay:
-                print("plot points")
+                # print("plot points")
                 ax.scatter(kwds['pts'][:, 0], kwds['pts'][:, 1], c='w', marker='s', s=10)
             if 'data_points' in kwds:
                 ax.scatter(kwds['data_points'][:, 0], kwds['data_points'][:, 1], c='w', marker='s', s=5)
+            if 'title' in kwds:
+                ax.set_title(kwds['title'])
+            ax.set_xlabel(xlabel)
+            ax.set_ylabel(ylabel)
+            ax.set_xlim([0,self.h.shape[0]])
+            ax.set_ylim([0,self.h.shape[1]])
             divider = axes_grid1.make_axes_locatable(ax)
             cax = divider.append_axes('right', size='5%', pad=0.15)
-            fig.colorbar(im, cax=cax)
+            cbar = fig.colorbar(im, cax=cax)
+            cbar.set_label("H [bits]")
         else:
             plt.imshow(self.h.transpose(), origin='lower left')
 
@@ -310,7 +319,7 @@ class EntropySection(object):
                 im = ax.imshow(self.cond_entropy_section.transpose(), origin='lower left')
             ax.set_xlim([0, self.data.shape[1]])
             ax.set_ylim([0, self.data.shape[2]])
-            ax.scatter(self.pos[:, 0], pos[:, 1], c='w', marker='s', s=10)
+            ax.scatter(self.pos[:, 0], self.pos[:, 1], c='w', marker='s', s=10)
             divider = axes_grid1.make_axes_locatable(ax)
             cax = divider.append_axes('right', size='5%', pad=0.15)
             fig.colorbar(im, cax=cax)
@@ -338,7 +347,7 @@ class EntropySection(object):
                 im = ax.imshow(self.h.transpose() - self.cond_entropy_section.transpose(), origin='lower left', cmap=cmap)
             ax.set_xlim([0, self.data.shape[1]])
             ax.set_ylim([0, self.data.shape[2]])
-            ax.scatter(self.pos[:, 0], pos[:, 1], c='w', marker='s', s=10)
+            ax.scatter(self.pos[:, 0], self.pos[:, 1], c='w', marker='s', s=10)
             divider = axes_grid1.make_axes_locatable(ax)
             cax = divider.append_axes('right', size='5%', pad=0.15)
             fig.colorbar(im, cax=cax)
@@ -394,31 +403,36 @@ class EntropySection(object):
             raise(AttributeError, "Conditional entropy not yet calculated! Please use self.calc_cond_entropy_secion()")
 
         from mpl_toolkits import axes_grid1
-        fig, ax = plt.subplots(nrows=3, ncols=1, sharex=True, figsize=(6, 8))
-        im = ax[0].imshow(self.h.T, origin='lower left')  # , vmin=-zmax, vmax=zmax)
+        fig, ax = plt.subplots(nrows=1, ncols=3, sharex=True, figsize=(12, 8))
+        im = ax[0].imshow(self.h.T, origin='lower left', vmin=0, vmax=np.max(self.h))
         ax[0].set_xlim([0, self.data.shape[1]])
         ax[0].set_ylim([0, self.data.shape[2]])
+        ax[0].set_title("Entropy")
         divider = axes_grid1.make_axes_locatable(ax[0])
         cax = divider.append_axes('right', size='5%', pad=0.15)
         fig.colorbar(im, cax=cax);
 
-        im = ax[1].imshow(self.cond_entropy_section.T, origin='lower left')  # , vmin=-zmax, vmax=zmax)
+        im = ax[1].imshow(self.cond_entropy_section.T, origin='lower left', vmin=0, vmax=np.max(self.h))
         ax[1].set_xlim([0, self.data.shape[1]])
         ax[1].set_ylim([0, self.data.shape[2]])
+        ax[1].set_title("Conditional Entropy")
         divider = axes_grid1.make_axes_locatable(ax[1])
         cax = divider.append_axes('right', size='5%', pad=0.15)
         fig.colorbar(im, cax=cax);
-        ax[1].scatter(self.pos[:, 0], pos[:, 1], c='w', marker='s', s=10)
+        ax[1].scatter(self.pos[:, 0], self.pos[:, 1], c='w', marker='s', s=10)
 
         im = ax[2].imshow(self.cond_entropy_section.T - self.h.T, origin='lower left',
                           cmap='RdBu', interpolation='none',
-                          norm=MidpointNormalize(midpoint=0., vmin=-2, vmax=2))
+                          norm=MidpointNormalize(midpoint=0., vmin=-np.max(self.h), vmax=np.max(self.h)))
         ax[2].set_xlim([0, self.data.shape[1]])
         ax[2].set_ylim([0, self.data.shape[2]])
+        ax[2].set_title("Mutual Information")
         divider = axes_grid1.make_axes_locatable(ax[2])
         cax = divider.append_axes('right', size='5%', pad=0.15)
         fig.colorbar(im, cax=cax);
-        ax[2].scatter(self.pos[:, 0], pos[:, 1], c='w', marker='s', s=10)
+        ax[2].scatter(self.pos[:, 0], self.pos[:, 1], c='w', marker='s', s=10)
+
+        plt.tight_layout()
 
 
 def entropy_section_par(i, j):
